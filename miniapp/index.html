@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>S&B Bar</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--tg-theme-bg-color, #ffffff);
+    color: var(--tg-theme-text-color, #111111);
+    padding-bottom: 90px;
+  }
+  .tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    overflow-x: auto;
+    position: sticky;
+    top: 0;
+    background: var(--tg-theme-bg-color, #ffffff);
+    z-index: 10;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .tab {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-radius: 20px;
+    background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    color: var(--tg-theme-text-color, #111);
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tab.active {
+    background: var(--tg-theme-button-color, #2ea6ff);
+    color: var(--tg-theme-button-text-color, #fff);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+  .card {
+    background: var(--tg-theme-secondary-bg-color, #f7f7f7);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .card .img-wrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #eee;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 42px;
+    position: relative;
+    overflow: hidden;
+  }
+  .placeholder::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.15;
+    background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px);
+    background-size: 16px 16px;
+  }
+  .placeholder span {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+  }
+  .placeholder.cat-pizza { background: linear-gradient(135deg, #ff9a5a, #d4380d); }
+  .placeholder.cat-rolls { background: linear-gradient(135deg, #5cdbd3, #08979c); }
+  .placeholder.cat-fastfood { background: linear-gradient(135deg, #ffd666, #d48806); }
+  .hit-badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: #ff5722;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 10px;
+  }
+  .card-body {
+    padding: 8px 10px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+  }
+  .card-name {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 33px;
+  }
+  .card-price {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--tg-theme-link-color, #2ea6ff);
+  }
+  .card-action {
+    margin-top: auto;
+  }
+  .add-btn {
+    width: 100%;
+    padding: 7px 0;
+    border-radius: 10px;
+    border: none;
+    background: var(--tg-theme-button-color, #2ea6ff);
+    color: var(--tg-theme-button-text-color, #fff);
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--tg-theme-button-color, #2ea6ff);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .stepper button {
+    border: none;
+    background: transparent;
+    color: var(--tg-theme-button-text-color, #fff);
+    font-size: 16px;
+    font-weight: 700;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+  }
+  .stepper span {
+    color: var(--tg-theme-button-text-color, #fff);
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  /* Checkout screen */
+  #checkout {
+    display: none;
+    padding: 14px;
+  }
+  .co-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .co-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+    font-size: 14px;
+  }
+  .co-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 16px;
+    padding: 12px 0;
+  }
+  .co-section {
+    margin-top: 18px;
+  }
+  .co-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--tg-theme-hint-color, #888);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .choice-row {
+    display: flex;
+    gap: 8px;
+  }
+  .choice-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid var(--tg-theme-secondary-bg-color, #eee);
+    background: var(--tg-theme-secondary-bg-color, #f7f7f7);
+    color: var(--tg-theme-text-color, #111);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .choice-btn.selected {
+    border-color: var(--tg-theme-button-color, #2ea6ff);
+    background: var(--tg-theme-button-color, #2ea6ff);
+    color: var(--tg-theme-button-text-color, #fff);
+  }
+  .field-input {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.15);
+    font-size: 14px;
+    background: var(--tg-theme-bg-color, #fff);
+    color: var(--tg-theme-text-color, #111);
+  }
+  #addressInput {
+    display: none;
+  }
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--tg-theme-hint-color, #888);
+  }
+
+  /* Description modal */
+  #descModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  #descModal.open { display: flex; }
+  .desc-sheet {
+    background: var(--tg-theme-bg-color, #fff);
+    color: var(--tg-theme-text-color, #111);
+    width: 100%;
+    max-width: 480px;
+    border-radius: 18px 18px 0 0;
+    padding: 18px;
+    animation: slideUp 0.2s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .desc-photo {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .desc-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .desc-photo .placeholder { font-size: 60px; }
+  .desc-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .desc-price { font-size: 16px; font-weight: 700; color: var(--tg-theme-link-color, #2ea6ff); margin-bottom: 10px; }
+  .desc-text { font-size: 14px; line-height: 1.5; margin-bottom: 18px; }
+  .desc-text.muted { color: var(--tg-theme-hint-color, #888); font-style: italic; }
+  .desc-close-btn {
+    width: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    border: none;
+    background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    color: var(--tg-theme-text-color, #111);
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <div class="tabs" id="tabs"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div id="checkout">
+  <div class="co-title">Ваш заказ</div>
+  <div id="coItems"></div>
+  <div class="co-total"><span>Итого</span><span id="coTotal">0 ₽</span></div>
+
+  <div class="co-section">
+    <div class="co-label">Способ получения</div>
+    <div class="choice-row">
+      <button class="choice-btn" id="methodDelivery" onclick="setMethod('Доставка')">🚗 Доставка</button>
+      <button class="choice-btn" id="methodPickup" onclick="setMethod('Самовывоз')">🏠 Самовывоз</button>
+    </div>
+    <input type="text" id="addressInput" class="field-input" placeholder="Укажите адрес доставки">
+  </div>
+
+  <div class="co-section">
+    <div class="co-label">Телефон для связи</div>
+    <input type="tel" id="phoneInput" class="field-input" placeholder="+7 999 000-00-00">
+  </div>
+
+  <div class="co-section">
+    <div class="co-label">Оплата</div>
+    <div class="choice-row">
+      <button class="choice-btn" id="payCard" onclick="setPayment('Картой')">💳 Картой</button>
+      <button class="choice-btn" id="payCash" onclick="setPayment('Наличными')">💵 Наличными</button>
+    </div>
+  </div>
+</div>
+
+<div id="descModal" onclick="if(event.target===this) closeDescModal()">
+  <div class="desc-sheet" id="descSheet"></div>
+</div>
+
+<script>
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+
+  // ---- Реальное меню S&B Bar ----
+  const MENU = [
+    {id:1, cat:"Пицца", name:"Пицца-фри", price:659, hit:true, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/10def951-741d-4175-836b-3d92dcec868b", desc:"Копчёная курица, колбаски, моцарелла, соус биг мак, фри макси"},
+    {id:2, cat:"Пицца", name:"Четыре сыра", price:659, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/27889187-dabe-4929-a11a-e62d12a41d18", desc:"Моцарелла, сыр деревенский, сыр с голубой плесенью, пармезан, орегано"},
+    {id:3, cat:"Пицца", name:"Лесная", price:589, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/9996b08b-abe8-4dc9-a6ea-5e66be166db8", desc:"Фирменный соус, моцарелла, красный лук, шампиньоны, картофель по-деревенски, зелень"},
+    {id:4, cat:"Пицца", name:"Пепперони", price:579, hit:true, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/a61e3cda-a437-4e4d-a95b-2ba67c9c67b1", desc:"Томатный соус, моцарелла, помидоры, пепперони, сушёная зелень"},
+    {id:5, cat:"Пицца", name:"Пицца с ветчиной и грибами", price:539, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/0ba6139f-511a-482b-8457-dac7b8259780", desc:"Сыр моцарелла, ветчина, шампиньоны, сушёная зелень"},
+    {id:6, cat:"Пицца", name:"Грибника", price:559, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/ea7c7b51-9443-482a-bbb8-c01e3bc523b1", desc:"Соус сливочный, моцарелла, грибы белые, шампиньоны, грибы вешенки, красный лук, зелень"},
+    {id:7, cat:"Пицца", name:"Венеция", price:589, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/33798eed-e113-443a-a6a5-caea9415e57e", desc:"Белый соус, ветчина, сыр моцарелла, зелень"},
+    {id:8, cat:"Пицца", name:"Пепперони острая", price:579, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/a3c54187-2c15-442d-a708-a63762e9170f", desc:"Томатный соус, моцарелла, пепперони, помидоры, перец халапенью, орегано"},
+    {id:9, cat:"Пицца", name:"Ассорти", price:559, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/b0c25b4d-fdd4-4799-b367-1c345eb7364d", desc:"Сырный соус, моцарелла, помидор, шампиньоны, колбаса чоризо, ветчина, белый соус"},
+    {id:10, cat:"Пицца", name:"Четыре сезона", price:569, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/6dc6f4cd-7467-4e4a-b424-b4bb49f58521", desc:"Пицца-соус, ананас, ветчина, курица шаурма, курица копчёная, моцарелла, сырный соус"},
+    {id:11, cat:"Пицца", name:"Курица под чесночным соусом", price:579, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/130353ac-27ea-4750-b772-784ca4e7b1b0", desc:"Копчёная курица, помидоры, маринованный лук, пицца соус, моцарелла"},
+    {id:12, cat:"Пицца", name:"Жульетта", price:639, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/271608aa-ac21-45ba-83d7-0a0999640dcc", desc:"Курица, шампиньоны, моцарелла, пицца соус, белый соус"},
+    {id:13, cat:"Пицца", name:"Домашняя", price:649, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/e8d31b4a-8ca0-46e9-81c6-561e06adb11c", desc:"Курица, белый соус, моцарелла, копчёные колбаски, помидоры"},
+    {id:14, cat:"Пицца", name:"Гавайская", price:569, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/9d3e2055-a367-4b9f-b1dd-614808e786c7", desc:"Белый соус, ананас, курица копчёная, моцарелла, орегано"},
+    {id:15, cat:"Пицца", name:"Пицца с копчёностями", price:609, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/b7388c95-0ab9-4142-ac36-842bb6aa83a5", desc:"Томатный соус, моцарелла, колбаса с/к, копчёная куриная грудка, бекон, огурцы маринованные, соус барбекю"},
+    {id:16, cat:"Пицца", name:"Милано", price:569, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/9aec0396-c192-498c-a76e-2aaf69d9c7e5", desc:"Белый соус, курица, маринованные огурцы, красный лук, сыр моцарелла, зелень"},
+    {id:17, cat:"Пицца", name:"А-ля Биг-Мак", price:599, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/4e84195c-0edf-4a66-aa7d-f406dd3e291e", desc:"Томатный соус, моцарелла, помидоры, фарш, огурцы маринованные, лист салата, лук красный, соус Биг-Мак"},
+    {id:18, cat:"Пицца", name:"Деревенская", price:599, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/fbe38e3b-c569-4bfc-9543-4c805f52b066", desc:"Томатный соус, курица, помидоры, свежие огурцы, сыр моцарелла, зелень"},
+    {id:19, cat:"Пицца", name:"Винни Пух (Детская)", price:589, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/67498954-4fcc-40d3-bc5a-8aa5b445769c", desc:"Белый соус, сосиски, сыр моцарелла, зелень"},
+    {id:20, cat:"Пицца", name:"Халяль", price:579, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/36dbec55-066c-470c-8afd-d2661918da77", desc:"Томатный соус, куриное филе халяль, ветчина халяль, шампиньоны, огурцы свежие"},
+
+    {id:21, cat:"Запечённые роллы", name:"Ролл столичный", price:399, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/5cca7cac-2a22-410a-b0ee-aafd424cb379", desc:"8 шт., копчёная курица, маринованные огурцы, креметта, кунжут"},
+    {id:22, cat:"Запечённые роллы", name:"Илиш", price:529, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/b711f179-61e6-4b07-aaf8-24098d89a012", desc:"6 шт., угорь, семга, окунь, сырный соус, унаги, кунжут"},
+    {id:23, cat:"Запечённые роллы", name:"Любимчик", price:399, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/160d8b8e-cc26-4ff7-9718-733ec58dbee8", desc:"8 шт., курица, сливочный сыр, помидор, спайси соус, сырный соус для запекания"},
+    {id:24, cat:"Запечённые роллы", name:"Шанхай", price:439, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/8e4b6db1-ae67-495b-9ae2-b03a64293fe4", desc:"8 шт., семга, огурец, сырный соус для запекания"},
+    {id:25, cat:"Запечённые роллы", name:"Запеченная Филадельфия", price:699, hit:true, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/e92b2bbf-27ba-4eb8-9286-4f52b2909725", desc:"8 шт., семга, сливочный сыр, сырный соус для запекания"},
+    {id:26, cat:"Запечённые роллы", name:"Фудзи", price:429, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/65a21283-11ab-4e68-847e-b004627c8128", desc:"8 шт., перец болгарский, креметта, угорь, омлет"},
+    {id:27, cat:"Запечённые роллы", name:"Дубай", price:349, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/d989b279-0b54-4eb4-adf7-6e62a8d0cc48", desc:"8 шт., курица копчёная, лук зелёный, соус терияки"},
+    {id:28, cat:"Запечённые роллы", name:"Уфа", price:399, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/f5425350-8fba-46ae-8885-683a6cfd09e3", desc:"8 шт., курица копчёная, перец болгарский, креметта, соус терияки"},
+    {id:29, cat:"Запечённые роллы", name:"Дайкон", price:599, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/ca9e39d9-6401-41b7-a4cb-3c160622b7cc", desc:"8 шт., креметта, соус спайси, угорь, тунец, семга, редька дайкон"},
+    {id:30, cat:"Запечённые роллы", name:"Кавасаки", price:599, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/fbd5ed47-3c35-4689-85ed-3d761b1876c9", desc:"8 шт., креметта, авокадо, семга в темпуре"},
+    {id:31, cat:"Запечённые роллы", name:"С копчёной семгой", price:629, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/5ca2d022-a675-40e4-aaa0-6f0b5786080c", desc:"8 шт., креметта, огурцы, лист салата, авокадо, семга копчёная, зелёный лук"},
+    {id:32, cat:"Запечённые роллы", name:"С креветкой в терияки", price:619, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/78d55542-c0bf-4789-a20d-14ffd001d640", desc:"8 шт., креметта, креветка в терияки, омлет, огурцы"},
+    {id:33, cat:"Запечённые роллы", name:"Москва", price:399, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/ec3354ca-2d97-4e9f-bc80-9ed21eaafc3b", desc:"8 шт., морской окунь, огурец, пекинка, тобико, кунжут, сырный соус для запекания"},
+    {id:34, cat:"Запечённые роллы", name:"Тамагочи", price:379, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/89125825-6d9e-418d-af1b-55c34f6b042f", desc:"6 шт., мидии, сливочный сыр, сырный соус, соус терияки"},
+    {id:35, cat:"Запечённые роллы", name:"Сан-Франциско", price:409, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/9eb238d3-50e2-43ea-b596-8ced6597b491", desc:"8 шт., курица, пекинка, сливочный сыр, тобико, сырный соус, соус терияки"},
+    {id:36, cat:"Запечённые роллы", name:"Запеченная классика с окунем", price:379, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/c86f20f6-d734-4667-8920-10331c8ee31c", desc:"8 кусочков, окунь, кунжут, унаги соус"},
+    {id:37, cat:"Запечённые роллы", name:"Запеченная классика с семгой", price:509, hit:true, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/54b58b50-72bc-4c65-a9b6-f754d8c7b7a5", desc:"8 кусочков, семга, кунжут, унаги соус"},
+    {id:38, cat:"Запечённые роллы", name:"Запеченная классика с крем-крабом", price:309, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/36f900dc-0670-41c1-a085-861eb0acad2c", desc:"8 кусочков, краб, кунжут, унаги соус"},
+    {id:39, cat:"Запечённые роллы", name:"Запеченная классика с мидиями", price:379, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/9a9ff922-7d4c-46f9-afa4-e11f0fead973", desc:"8 кусочков, мидии, кунжут, унаги соус"},
+    {id:40, cat:"Запечённые роллы", name:"Мидори", price:399, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/6a257a49-f757-498b-9f53-eac6c39bdc11", desc:"8 шт., крем краб, мидии, пекинка, красная масага, сырный соус для запекания"},
+
+    {id:41, cat:"Фастфуды", name:"Батат", price:199, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/8bc73201-7aa1-47b1-85d9-9a5acd6420d3"},
+    {id:42, cat:"Фастфуды", name:"Бургер Том-Ям", price:189, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/96abf595-98aa-450f-aaac-1230d44db40b", desc:"Булочка, соус Том-Ям, айсберг, шампиньоны, курица, сыр чеддер, помидор"},
+    {id:43, cat:"Фастфуды", name:"Шаурма в сырном лаваше", price:279, hit:true, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/4c3d963a-2306-4c85-9782-41f51c31e828", desc:"Лаваш, курица шаурма, помидоры, огурцы, морковь по-корейски, фирменный соус"},
+    {id:44, cat:"Фастфуды", name:"Хашбрауны", price:79, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/5fa2d219-4b27-47ba-9af1-91e9ec8ae7bf", desc:"Хашбрауны, 2 шт."},
+    {id:45, cat:"Фастфуды", name:"Чиабатта со стрипсами", price:189, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/2a875828-b33f-40a1-85de-627ac88aa19e", desc:"Хлеб чиабатта, стрипсы, помидоры, лист салата"},
+    {id:46, cat:"Фастфуды", name:"Луковые кольца", price:195, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/04f6f0c0-388b-4466-9741-34c4098a7946"},
+    {id:47, cat:"Фастфуды", name:"Стрипсы", price:219, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/3957952f-cad9-4fae-b500-7dbd6cbc879d", desc:"150 г"},
+    {id:48, cat:"Фастфуды", name:"Сырные палочки", price:215, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/41d80694-b8db-423f-8428-aa987eb9da7f", desc:"150 г"},
+    {id:49, cat:"Фастфуды", name:"Деревенская (снек)", price:269, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/fff802f5-658e-467c-8651-5a7ae3fca09f", desc:"Коржик, фирменный соус, тёртый сыр, картофельные дольки, жареный лук, курица, соус барбекю"},
+    {id:50, cat:"Фастфуды", name:"Чикенбургер", price:295, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/45381e9d-773d-4480-814b-08112ac708e7", desc:"Булочка, соус биг-мак, лук маринованный, огурцы маринованные, помидоры, куриные котлеты, сыр чеддер, лист салата"},
+    {id:51, cat:"Фастфуды", name:"Бургер со стрипсами", price:229, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/c8153a59-bc42-40da-bb8a-a06ba176d3f4", desc:"Булочка, стрипсы, лист салата, лук красный, помидор, фирменный соус"},
+    {id:52, cat:"Фастфуды", name:"Бургер", price:319, hit:true, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/87261021-68a9-423c-8616-cb8a68a4f559", desc:"Булочка, соус гриль, говяжья котлета, помидоры, огурцы маринованные, лук маринованный, лист салата, сыр чеддер"},
+    {id:53, cat:"Фастфуды", name:"Шаурма из армянского лаваша", price:279, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/2e67405b-8cec-4626-851d-987666c0cfe3", desc:"Лаваш, курица шаурма, помидоры, огурцы, морковь по-корейски, фирменный соус"},
+    {id:54, cat:"Фастфуды", name:"Байтсы в терияки", price:439, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/bfc70c88-0910-44ca-bd2d-fc464e40cb4b"},
+    {id:55, cat:"Фастфуды", name:"Цезарь ролл", price:319, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/eaca1a54-fa5c-405c-868f-68abcfc8b06f", desc:"Тортилья, фирменный соус, огурцы, помидор, лист салата, бекон, стрипсы, картофель фри"},
+    {id:56, cat:"Фастфуды", name:"Снэк бокс с крылышками", price:329, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/311bb826-d579-4f6e-8132-4d6eaf8401b7", desc:"Сырные палочки, луковые кольца, картофель фри, куриные крылышки"},
+    {id:57, cat:"Фастфуды", name:"Снэк бокс", price:319, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/9e6c7c95-ec57-4ad3-8b9c-ff3a752caaf4", desc:"Сырные палочки, луковые кольца, картофель фри, стрипсы"},
+    {id:58, cat:"Фастфуды", name:"S&B box", price:279, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/01cacd18-671e-4983-9115-4b82acf79104", desc:"Картофельные дольки, стрипсы, солёные огурцы, соус на выбор (горчичный, ореховый)"},
+    {id:59, cat:"Фастфуды", name:"Острые крылышки", price:429, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/0dd1a646-5459-4b5c-ab9f-db15743c89f1", desc:"Куриные крылышки"},
+    {id:60, cat:"Фастфуды", name:"Картофель по-деревенски", price:179, hit:false, photo:"https://thumbor.uds.app/unsafe/600x600//game-prod/549755920775/GOODS/d3d27379-e7f7-43c9-be91-7eb44e390177", desc:"Картофельные дольки, соль, копчёная паприка, 185 г"},
+  ];
+
+  const CATS = ["Пицца", "Запечённые роллы", "Фастфуды"];
+  const CAT_EMOJI = {"Пицца":"🍕", "Запечённые роллы":"🍣", "Фастфуды":"🍔"};
+  const CAT_CLASS = {"Пицца":"cat-pizza", "Запечённые роллы":"cat-rolls", "Фастфуды":"cat-fastfood"};
+
+  let activeCat = CATS[0];
+  let cart = {}; // id -> qty
+  let method = null;
+  let payment = null;
+  let checkoutOpen = false;
+
+  function renderTabs() {
+    const tabsEl = document.getElementById('tabs');
+    tabsEl.innerHTML = '';
+    CATS.forEach(cat => {
+      const btn = document.createElement('button');
+      btn.className = 'tab' + (cat === activeCat ? ' active' : '');
+      btn.textContent = CAT_EMOJI[cat] + ' ' + cat;
+      btn.onclick = () => { activeCat = cat; renderTabs(); renderGrid(); };
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  function renderGrid() {
+    const gridEl = document.getElementById('grid');
+    gridEl.innerHTML = '';
+    const items = MENU.filter(i => i.cat === activeCat).sort((a, b) => b.hit - a.hit);
+    items.forEach(item => {
+      const qty = cart[item.id] || 0;
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'img-wrap';
+      if (item.photo) {
+        imgWrap.innerHTML = `<img src="${item.photo}" alt="${item.name}">`;
+        if (item.hit) {
+          const badge = document.createElement('div');
+          badge.className = 'hit-badge';
+          badge.textContent = '🔥 Хит';
+          imgWrap.appendChild(badge);
+        }
+      } else {
+        imgWrap.innerHTML = `<div class="placeholder ${CAT_CLASS[item.cat]}"><span>${CAT_EMOJI[item.cat]}</span></div>`;
+      }
+      imgWrap.onclick = () => openDescModal(item.id);
+      card.appendChild(imgWrap);
+
+      const body = document.createElement('div');
+      body.className = 'card-body';
+      body.innerHTML = `
+        <div class="card-name">${item.name}</div>
+        <div class="card-price">${item.price} ₽</div>
+        <div class="card-action" id="action-${item.id}"></div>
+      `;
+      card.appendChild(body);
+      gridEl.appendChild(card);
+      renderAction(item.id);
+    });
+  }
+
+  function renderAction(id) {
+    const el = document.getElementById('action-' + id);
+    const qty = cart[id] || 0;
+    if (qty === 0) {
+      el.innerHTML = `<button class="add-btn" onclick="addItem(${id})">Добавить</button>`;
+    } else {
+      el.innerHTML = `
+        <div class="stepper">
+          <button onclick="decItem(${id})">−</button>
+          <span>${qty}</span>
+          <button onclick="incItem(${id})">+</button>
+        </div>`;
+    }
+  }
+
+  function addItem(id) {
+    cart[id] = (cart[id] || 0) + 1;
+    renderAction(id);
+    updateMainButton();
+  }
+  function incItem(id) {
+    cart[id] = (cart[id] || 0) + 1;
+    renderAction(id);
+    updateMainButton();
+  }
+  function decItem(id) {
+    cart[id] = (cart[id] || 0) - 1;
+    if (cart[id] <= 0) delete cart[id];
+    renderAction(id);
+    updateMainButton();
+  }
+
+  function cartCount() {
+    return Object.values(cart).reduce((a,b) => a+b, 0);
+  }
+  function cartTotal() {
+    return Object.entries(cart).reduce((sum, [id, qty]) => {
+      const item = MENU.find(i => i.id == id);
+      return sum + item.price * qty;
+    }, 0);
+  }
+
+  function updateMainButton() {
+    if (checkoutOpen) return;
+    const count = cartCount();
+    if (count > 0) {
+      tg.MainButton.setText(`Корзина • ${count} • ${cartTotal()} ₽`);
+      tg.MainButton.enable();
+      tg.MainButton.show();
+    } else {
+      tg.MainButton.hide();
+    }
+  }
+
+  tg.MainButton.onClick(() => {
+    if (!checkoutOpen) {
+      openCheckout();
+    } else {
+      submitOrder();
+    }
+  });
+
+  tg.BackButton.onClick(() => {
+    closeCheckout();
+  });
+
+  function openCheckout() {
+    checkoutOpen = true;
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('checkout').style.display = 'block';
+    tg.BackButton.show();
+    renderCheckout();
+  }
+  function closeCheckout() {
+    checkoutOpen = false;
+    document.getElementById('menu').style.display = 'block';
+    document.getElementById('checkout').style.display = 'none';
+    tg.BackButton.hide();
+    updateMainButton();
+  }
+
+  function renderCheckout() {
+    const coItems = document.getElementById('coItems');
+    coItems.innerHTML = '';
+    Object.entries(cart).forEach(([id, qty]) => {
+      const item = MENU.find(i => i.id == id);
+      const row = document.createElement('div');
+      row.className = 'co-item';
+      row.innerHTML = `<span>${item.name} × ${qty}</span><span>${item.price * qty} ₽</span>`;
+      coItems.appendChild(row);
+    });
+    document.getElementById('coTotal').textContent = cartTotal() + ' ₽';
+    updateCheckoutButton();
+  }
+
+  function setMethod(m) {
+    method = m;
+    document.getElementById('methodDelivery').classList.toggle('selected', m === 'Доставка');
+    document.getElementById('methodPickup').classList.toggle('selected', m === 'Самовывоз');
+    document.getElementById('addressInput').style.display = (m === 'Доставка') ? 'block' : 'none';
+    updateCheckoutButton();
+  }
+  function setPayment(p) {
+    payment = p;
+    document.getElementById('payCard').classList.toggle('selected', p === 'Картой');
+    document.getElementById('payCash').classList.toggle('selected', p === 'Наличными');
+    updateCheckoutButton();
+  }
+
+  document.getElementById('addressInput').addEventListener('input', updateCheckoutButton);
+  document.getElementById('phoneInput').addEventListener('input', updateCheckoutButton);
+
+  function updateCheckoutButton() {
+    const address = document.getElementById('addressInput').value.trim();
+    const addressOk = method !== 'Доставка' || address.length > 3;
+    const phone = document.getElementById('phoneInput').value.trim();
+    const phoneOk = phone.length >= 10;
+    const ready = method && payment && addressOk && phoneOk && cartCount() > 0;
+    tg.MainButton.setText('Отправить заказ');
+    if (ready) {
+      tg.MainButton.enable();
+      tg.MainButton.color = tg.themeParams.button_color || '#2ea6ff';
+    } else {
+      tg.MainButton.disable();
+    }
+    tg.MainButton.show();
+  }
+
+  function openDescModal(id) {
+    const item = MENU.find(i => i.id === id);
+    const sheet = document.getElementById('descSheet');
+    let photoHtml;
+    if (item.photo) {
+      photoHtml = `<div class="desc-photo"><img src="${item.photo}" alt="${item.name}"></div>`;
+    } else {
+      photoHtml = `<div class="desc-photo"><div class="placeholder ${CAT_CLASS[item.cat]}" style="aspect-ratio:auto;"><span>${CAT_EMOJI[item.cat]}</span></div></div>`;
+    }
+    const descHtml = item.desc
+      ? `<div class="desc-text">${item.desc}</div>`
+      : `<div class="desc-text muted">Подробный состав уточняйте у персонала при заказе</div>`;
+    sheet.innerHTML = `
+      ${photoHtml}
+      <div class="desc-name">${item.name}${item.hit ? ' 🔥' : ''}</div>
+      <div class="desc-price">${item.price} ₽</div>
+      ${descHtml}
+      <button class="desc-close-btn" onclick="closeDescModal()">Закрыть</button>
+    `;
+    document.getElementById('descModal').classList.add('open');
+  }
+  function closeDescModal() {
+    document.getElementById('descModal').classList.remove('open');
+  }
+
+  function submitOrder() {
+    const address = document.getElementById('addressInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
+    const items = Object.entries(cart).map(([id, qty]) => {
+      const item = MENU.find(i => i.id == id);
+      return { name: item.name, price: item.price, qty: qty };
+    });
+    const payload = {
+      items: items,
+      total: cartTotal(),
+      method: method,
+      address: method === 'Доставка' ? address : '',
+      phone: phone,
+      payment: payment
+    };
+    tg.sendData(JSON.stringify(payload));
+  }
+
+  renderTabs();
+  renderGrid();
+  updateMainButton();
+</script>
+
+</body>
+</html>
