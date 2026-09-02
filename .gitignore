@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+*.log
+credentials/
+secrets/
+*.key
+*.pem
+*.ppk
+*.session
+orders*.csv
+customer*.csv
